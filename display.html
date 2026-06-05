@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>完成表示 | 文化祭注文予約</title>
+  <meta name="description" content="文化祭の模擬店向け完成表示画面">
+  <meta name="theme-color" content="#102542">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./script.js" defer></script>
+</head>
+<body data-page="display">
+  <main class="display-shell">
+    <section class="display-header">
+      <div>
+        <p class="eyebrow eyebrow--light">Pickup Monitor</p>
+        <h1>受け取り可能</h1>
+        <p class="hero-copy hero-copy--light">ステータスが「完成」になった注文番号を5秒ごとに更新します。</p>
+      </div>
+      <div class="display-meta">
+        <span class="display-chip" data-store-name>Un Deux Crois</span>
+        <span id="displayUpdatedAt" class="display-chip">更新待ち</span>
+      </div>
+    </section>
+
+    <section class="display-board">
+      <div id="displayCount" class="display-count">0件</div>
+      <div id="displayMessage" class="message-banner message-banner--dark" hidden></div>
+      <div id="displayOrderList" class="display-order-list"></div>
+    </section>
+  </main>
+</body>
+</html>

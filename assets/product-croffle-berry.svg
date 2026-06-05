@@ -1,0 +1,28 @@
+<svg width="800" height="600" viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="600" rx="48" fill="url(#bg)"/>
+  <circle cx="638" cy="116" r="86" fill="#FFF0CC" fill-opacity="0.72"/>
+  <ellipse cx="400" cy="430" rx="204" ry="46" fill="#102542" fill-opacity="0.08"/>
+  <ellipse cx="400" cy="354" rx="252" ry="128" fill="#FFF9FB"/>
+  <path d="M226 338C226 304.863 252.863 278 286 278H514C547.137 278 574 304.863 574 338V340C574 373.137 547.137 400 514 400H286C252.863 400 226 373.137 226 340V338Z" fill="#E0A455"/>
+  <path d="M252 308C252 286.461 269.461 269 291 269H509C530.539 269 548 286.461 548 308V309C548 330.539 530.539 348 509 348H291C269.461 348 252 330.539 252 309V308Z" fill="#F1C06B"/>
+  <path d="M274 340C274 319.013 291.013 302 312 302H488C508.987 302 526 319.013 526 340V341C526 361.987 508.987 379 488 379H312C291.013 379 274 361.987 274 341V340Z" fill="#D58B3D"/>
+  <path d="M298 252L324 206" stroke="#9F5D1E" stroke-width="16" stroke-linecap="round"/>
+  <path d="M502 252L476 206" stroke="#9F5D1E" stroke-width="16" stroke-linecap="round"/>
+  <path d="M310 294L338 340" stroke="#FFF7EA" stroke-width="10" stroke-linecap="round"/>
+  <path d="M366 284L396 346" stroke="#FFF7EA" stroke-width="10" stroke-linecap="round"/>
+  <path d="M424 284L452 346" stroke="#FFF7EA" stroke-width="10" stroke-linecap="round"/>
+  <path d="M480 294L452 340" stroke="#FFF7EA" stroke-width="10" stroke-linecap="round"/>
+  <path d="M288 272C308 244 344 228 382 228H418C456 228 492 244 512 272C492 286 466 294 440 294H360C334 294 308 286 288 272Z" fill="#FFF7FB"/>
+  <path d="M304 268C320 250 348 240 378 240H422C452 240 480 250 496 268" stroke="#FFF7FB" stroke-width="28" stroke-linecap="round"/>
+  <path d="M326 256C348 246 372 240 400 240C428 240 452 246 474 256" stroke="#FFC9DE" stroke-width="12" stroke-linecap="round"/>
+  <path d="M316 278C338 292 366 300 400 300C434 300 462 292 484 278" stroke="#E65486" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="332" cy="274" r="16" fill="#E65486"/>
+  <circle cx="468" cy="274" r="16" fill="#E65486"/>
+  <circle cx="400" cy="262" r="14" fill="#FFB703"/>
+  <defs>
+    <linearGradient id="bg" x1="96" y1="82" x2="714" y2="550" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF5EE"/>
+      <stop offset="1" stop-color="#FFD5E5"/>
+    </linearGradient>
+  </defs>
+</svg>

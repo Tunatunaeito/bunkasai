@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>注文変更 | 文化祭注文予約</title>
+  <meta name="description" content="文化祭の模擬店向け注文変更ページ">
+  <meta name="theme-color" content="#ff6f61">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./script.js" defer></script>
+</head>
+<body data-page="edit">
+  <main class="app-shell">
+    <section class="hero-card hero-card--compact">
+      <div class="hero-content">
+        <p class="eyebrow">Edit Order</p>
+        <h1>注文内容の変更</h1>
+        <p class="hero-copy">編集URLからアクセスした人だけが、この注文を更新できます。</p>
+        <div class="hero-meta">
+          <span class="pill" id="editPageOrderNumber">#---</span>
+          <span class="pill" id="editPageStatus">読み込み中</span>
+        </div>
+      </div>
+    </section>
+
+    <div id="editLoadingCard" class="panel-card centered-card">
+      <p class="loading-text">注文データを読み込んでいます...</p>
+    </div>
+
+    <div id="editErrorCard" class="panel-card centered-card" hidden>
+      <h2>注文を開けませんでした</h2>
+      <p id="editErrorMessage" class="hero-copy">URLを確認してください。</p>
+      <a class="ghost-button" href="./index.html">新規注文ページへ戻る</a>
+    </div>
+
+    <section id="editContent" class="page-grid" hidden>
+      <form id="editForm" class="stack-lg" novalidate>
+        <section class="panel-card">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">ORDER INFO</p>
+              <h2>注文情報</h2>
+            </div>
+          </div>
+          <div id="editMessage" class="message-banner" hidden></div>
+          <div class="info-grid">
+            <div class="info-chip">
+              <span>注文番号</span>
+              <strong id="editInfoOrderNumber">#---</strong>
+            </div>
+            <div class="info-chip">
+              <span>更新時刻</span>
+              <strong id="editInfoUpdatedAt">-</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-card">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">STEP 1</p>
+              <h2>商品を調整</h2>
+            </div>
+            <p class="section-caption">変更後はステータスが受付中に戻ります。</p>
+          </div>
+          <div id="editProductGrid" class="product-grid"></div>
+        </section>
+
+        <section class="panel-card">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">STEP 2</p>
+              <h2>注文者情報</h2>
+            </div>
+          </div>
+          <label class="field">
+            <span>名前 <strong class="required-label">必須</strong></span>
+            <input id="editCustomerName" name="name" type="text" maxlength="40" autocomplete="name" required>
+          </label>
+          <label class="field">
+            <span>学年 <span class="optional-label">任意</span></span>
+            <input id="editCustomerGrade" name="grade" type="text" maxlength="20" autocomplete="organization-title">
+          </label>
+          <div class="button-column">
+            <button id="saveEditButton" class="primary-button" type="submit">変更を保存する</button>
+            <button id="cancelOrderButton" class="danger-button" type="button">注文をキャンセル</button>
+          </div>
+        </section>
+      </form>
+
+      <aside class="summary-column stack-lg">
+        <section class="panel-card summary-card">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">LIVE TOTAL</p>
+              <h2>変更後の内容</h2>
+            </div>
+          </div>
+          <div class="summary-total">
+            <div>
+              <p class="summary-label">合計金額</p>
+              <p id="editTotalAmount" class="summary-amount">¥0</p>
+            </div>
+            <div class="summary-count">
+              <span id="editTotalItems">0個</span>
+            </div>
+          </div>
+          <ul id="editSummaryList" class="summary-list"></ul>
+        </section>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

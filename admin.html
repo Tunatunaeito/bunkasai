@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>管理画面 | 文化祭注文予約</title>
+  <meta name="description" content="文化祭の模擬店向け管理画面">
+  <meta name="theme-color" content="#1a7f8f">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./script.js" defer></script>
+</head>
+<body data-page="admin">
+  <main class="app-shell">
+    <section class="hero-card hero-card--admin">
+      <div class="hero-content">
+        <p class="eyebrow">Admin Dashboard</p>
+        <h1>運営管理画面</h1>
+        <p class="hero-copy">検索、一覧確認、ステータス更新をこの画面でまとめて操作できます。</p>
+        <div class="hero-meta">
+          <span class="pill">パスワード保護</span>
+          <span class="pill">リアルタイム更新</span>
+          <span class="pill" data-api-config-status>Apps Script 接続準備OK</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="adminLoginCard" class="panel-card login-card">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">LOGIN</p>
+          <h2>管理者ログイン</h2>
+        </div>
+      </div>
+      <div id="adminLoginMessage" class="message-banner" hidden></div>
+      <form id="adminLoginForm" class="stack-md" novalidate>
+        <label class="field">
+          <span>管理パスワード</span>
+          <input id="adminPassword" type="password" autocomplete="current-password" placeholder="管理者用パスワードを入力" required>
+        </label>
+        <button id="adminLoginButton" class="primary-button" type="submit">ログインする</button>
+      </form>
+    </section>
+
+    <section id="adminDashboard" class="stack-lg" hidden>
+      <div class="panel-card">
+        <div class="toolbar">
+          <label class="search-field">
+            <span class="sr-only">注文検索</span>
+            <input id="adminSearchInput" type="search" placeholder="注文番号・名前・学年・商品名で検索">
+          </label>
+          <div class="toolbar-actions">
+            <button id="adminRefreshButton" class="secondary-button" type="button">再読み込み</button>
+            <button id="adminLogoutButton" class="ghost-button" type="button">ログアウト</button>
+          </div>
+        </div>
+        <div id="adminDashboardMessage" class="message-banner" hidden></div>
+        <div id="adminStats" class="stats-grid"></div>
+        <p id="adminUpdatedAt" class="small-note">最終更新: -</p>
+      </div>
+
+      <section class="stack-md">
+        <div class="section-heading section-heading--inline">
+          <div>
+            <p class="section-kicker">ORDERS</p>
+            <h2>注文一覧</h2>
+          </div>
+        </div>
+        <div id="adminOrderList" class="admin-order-list"></div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

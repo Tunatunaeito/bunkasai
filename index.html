@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>文化祭注文予約</title>
+  <meta name="description" content="文化祭の模擬店向け注文予約システム">
+  <meta name="theme-color" content="#ff6f61">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./script.js" defer></script>
+</head>
+<body data-page="order">
+  <main class="app-shell">
+    <section class="hero-card">
+      <div class="hero-content">
+        <p class="eyebrow">Cultural Festival Pre-Order</p>
+        <h1 data-store-name>Un Deux Crois</h1>
+        <p class="hero-copy">QRコードからそのまま予約。並ぶ前に注文して、受け取りをもっとスムーズに。</p>
+        <div class="hero-meta">
+          <span class="pill">スマホ最適化</span>
+          <span class="pill">ホーム画面追加OK</span>
+          <span class="pill" data-api-config-status>Apps Script 接続準備OK</span>
+        </div>
+      </div>
+      <div class="hero-sticker">Festival Food</div>
+    </section>
+
+    <section class="page-grid">
+      <form id="orderForm" class="stack-lg" novalidate>
+        <section class="panel-card">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">STEP 1</p>
+              <h2>商品をえらぶ</h2>
+            </div>
+            <p class="section-caption">気になるメニューをタップして数量を増やしてください。</p>
+          </div>
+          <div id="orderMessage" class="message-banner" hidden></div>
+          <div id="productGrid" class="product-grid"></div>
+        </section>
+
+        <section class="panel-card">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">STEP 2</p>
+              <h2>注文者情報</h2>
+            </div>
+          </div>
+          <label class="field">
+            <span>名前 <strong class="required-label">必須</strong></span>
+            <input id="customerName" name="name" type="text" maxlength="40" autocomplete="name" placeholder="例：山田 花子" required>
+          </label>
+          <label class="field">
+            <span>学年 <span class="optional-label">任意</span></span>
+            <input id="customerGrade" name="grade" type="text" maxlength="20" autocomplete="organization-title" placeholder="例：2年 / 保護者">
+          </label>
+          <button id="submitOrderButton" class="primary-button" type="submit">予約する</button>
+        </section>
+      </form>
+
+      <aside class="summary-column stack-lg">
+        <section class="panel-card summary-card">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">LIVE TOTAL</p>
+              <h2>現在の注文</h2>
+            </div>
+          </div>
+          <div class="summary-total">
+            <div>
+              <p class="summary-label">合計金額</p>
+              <p id="orderTotalAmount" class="summary-amount">¥0</p>
+            </div>
+            <div class="summary-count">
+              <span id="orderTotalItems">0個</span>
+            </div>
+          </div>
+          <ul id="orderSummaryList" class="summary-list"></ul>
+        </section>
+
+        <section id="receiptPanel" class="panel-card receipt-card" hidden>
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">STEP 3</p>
+              <h2>予約完了</h2>
+            </div>
+          </div>
+          <div class="receipt-highlight">
+            <p class="summary-label">注文番号</p>
+            <p id="receiptOrderNumber" class="receipt-order-number">#101</p>
+          </div>
+          <dl class="receipt-details">
+            <div>
+              <dt>ステータス</dt>
+              <dd id="receiptStatus">受付中</dd>
+            </div>
+            <div>
+              <dt>編集用URL</dt>
+              <dd>
+                <a id="receiptEditLink" class="receipt-link mono" href="#" target="_blank" rel="noopener noreferrer"></a>
+              </dd>
+            </div>
+          </dl>
+          <div class="button-row">
+            <button id="copyEditLinkButton" class="secondary-button" type="button">編集URLをコピー</button>
+            <a id="openEditPageButton" class="ghost-button" href="#" target="_blank" rel="noopener noreferrer">編集ページを開く</a>
+          </div>
+          <p class="small-note">受け取りまでこの注文番号を保存してください。</p>
+        </section>
+      </aside>
+    </section>
+
+    <footer class="footer-note">
+      <p><span data-store-name>Un Deux Crois</span> ・ 文化祭オーダーシステム</p>
+      <p>&copy; <span id="currentYear"></span> School Festival Project</p>
+    </footer>
+  </main>
+</body>
+</html>
