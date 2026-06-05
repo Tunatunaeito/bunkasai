@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>お客様待機画面 | Un Deux Crois</title>
+  <meta name="description" content="文化祭クロッフル注文の待機画面">
+  <meta name="theme-color" content="#ff6f61">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./script.js" defer></script>
+</head>
+<body data-page="customer">
+  <main class="app-shell app-shell--narrow">
+    <section class="hero-card hero-card--compact">
+      <div class="hero-content">
+        <p class="eyebrow">Customer Waiting</p>
+        <h1>注文の進み具合</h1>
+        <p class="hero-copy">決済待ちから受取済まで、状態をリアルタイムで表示します。</p>
+        <div class="hero-meta">
+          <span class="pill" data-store-name>Un Deux Crois</span>
+          <span id="customerHeroStatus" class="pill">読み込み中</span>
+        </div>
+      </div>
+    </section>
+
+    <div id="customerLoadingCard" class="panel-card centered-card">
+      <p class="loading-text">注文情報を読み込んでいます...</p>
+    </div>
+
+    <div id="customerErrorCard" class="panel-card centered-card" hidden>
+      <h2>注文ページを開けませんでした</h2>
+      <p id="customerErrorMessage" class="hero-copy">URLを確認してください。</p>
+      <a class="ghost-button" href="./index.html">注文画面へ戻る</a>
+    </div>
+
+    <section id="customerView" class="stack-lg" hidden>
+      <section class="panel-card centered-card status-hero-card">
+        <p class="summary-label">注文番号</p>
+        <p id="customerOrderNumber" class="receipt-order-number">#---</p>
+        <span id="customerStatusBadge" class="status-pill status-pill--large">決済待ち</span>
+        <div id="customerStatusMessage" class="message-banner message-banner--inline">読み込み中です。</div>
+      </section>
+
+      <section class="panel-card">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">STATUS</p>
+            <h2>現在の状態</h2>
+          </div>
+          <p id="customerUpdatedAt" class="small-note">更新待ち</p>
+        </div>
+        <div id="customerStatusSteps" class="status-steps"></div>
+      </section>
+
+      <section class="panel-card info-panel-grid">
+        <div class="info-chip info-chip--accent">
+          <span>受取時間</span>
+          <strong id="customerSlotLabel">-</strong>
+        </div>
+        <div class="info-chip info-chip--accent">
+          <span>現在前にいる組数</span>
+          <strong id="customerQueueCount">あと0組</strong>
+        </div>
+        <div class="info-chip">
+          <span>合計金額</span>
+          <strong id="customerTotalAmount">¥0</strong>
+        </div>
+        <div class="info-chip">
+          <span>注文時刻</span>
+          <strong id="customerOrderedAt">-</strong>
+        </div>
+      </section>
+
+      <section class="panel-card">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">ORDER</p>
+            <h2>注文内容</h2>
+          </div>
+        </div>
+        <ul id="customerSummaryList" class="summary-list"></ul>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

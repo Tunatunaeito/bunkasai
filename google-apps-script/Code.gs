@@ -1,37 +1,115 @@
-const SHEET_NAME = "Orders";
-const SPREADSHEET_ID = "PASTE_SPREADSHEET_ID_HERE";
-const HEADER = [
+const SPREADSHEET_ID = "1TlQDRejU8clGrLVQbPl6rHaTNsfrcmIur4rtvKNyT8Q";
+const ADMIN_PASSWORD_HASH = "615ed7fb1504b0c724a296d7a69e6c7b2f9ea2c57c1d8206c5afdf392ebdfd25";
+const PUBLIC_SITE_URL = "https://tunatunaeito.github.io/bunkasai/";
+const NOTIFICATION_EMAIL = "tunaeito@gmail.com";
+
+const SHEETS = {
+  settings: "Settings",
+  products: "Products",
+  timeSlots: "TimeSlots",
+  orders: "Orders"
+};
+
+const ORDER_HEADER = [
   "注文番号",
-  "編集トークン",
+  "参照トークン",
   "名前",
   "学年",
-  "商品名",
-  "個数",
+  "受取枠ID",
+  "受取枠ラベル",
+  "受取開始",
+  "受取終了",
+  "商品一覧",
+  "個数一覧",
+  "商品総数",
   "合計金額",
   "注文時刻",
   "更新時刻",
   "ステータス",
+  "決済時刻",
+  "完成時刻",
+  "受取時刻",
+  "キャンセル時刻",
   "注文JSON"
 ];
 
-const ADMIN_PASSWORD_HASH = "PASTE_SHA256_HASH_HERE";
-const PRODUCT_CATALOG = {
-  croffle_sugar: { name: "シュガーバタークロッフル", price: 400 },
-  croffle_choco: { name: "チョコクロッフル", price: 450 },
-  croffle_berry: { name: "ベリークリームクロッフル", price: 500 }
-};
+const SETTINGS_HEADER = ["key", "value", "note"];
+const PRODUCTS_HEADER = ["active", "productId", "name", "description", "price", "imageUrl", "sortOrder"];
+const TIME_SLOTS_HEADER = ["active", "slotId", "label", "startTime", "endTime", "capacity", "sortOrder"];
 
 const STATUS = {
-  RECEIVED: "受付中",
-  COOKING: "調理中",
+  PAYMENT_PENDING: "決済待ち",
+  COOKING_WAIT: "調理待ち",
   READY: "完成",
-  PICKED_UP: "受取済み",
+  PICKED_UP: "受取済",
   CANCELED: "キャンセル"
 };
 
-const EDITABLE_STATUSES = [STATUS.RECEIVED, STATUS.COOKING, STATUS.READY];
-const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 6;
-const SCRIPT_PROPERTY_LAST_NUMBER = "LAST_ORDER_NUMBER";
+const PAID_STATUSES = [STATUS.COOKING_WAIT, STATUS.READY, STATUS.PICKED_UP];
+const ACTIVE_SLOT_STATUSES = [STATUS.PAYMENT_PENDING, STATUS.COOKING_WAIT, STATUS.READY, STATUS.PICKED_UP];
+const QUEUE_STATUSES = [STATUS.PAYMENT_PENDING, STATUS.COOKING_WAIT];
+const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 8;
+const LAST_ORDER_NUMBER_KEY = "LAST_ORDER_NUMBER";
+
+const DEFAULT_PRODUCTS = [
+  {
+    active: true,
+    productId: "croffle_sugar",
+    name: "シュガーバタークロッフル",
+    description: "バターの香りとやさしい甘さが人気の定番クロッフルです。",
+    price: 400,
+    imageUrl: "https://tunatunaeito.github.io/bunkasai/assets/product-croffle-sugar.svg",
+    sortOrder: 1
+  },
+  {
+    active: true,
+    productId: "croffle_choco",
+    name: "チョコクロッフル",
+    description: "サクッとした生地にチョコソースを重ねた写真映えメニューです。",
+    price: 450,
+    imageUrl: "https://tunatunaeito.github.io/bunkasai/assets/product-croffle-choco.svg",
+    sortOrder: 2
+  },
+  {
+    active: true,
+    productId: "croffle_berry",
+    name: "いちごベリークロッフル",
+    description: "甘酸っぱいベリーソースとクリームで仕上げた華やかな一品です。",
+    price: 500,
+    imageUrl: "https://tunatunaeito.github.io/bunkasai/assets/product-croffle-berry.svg",
+    sortOrder: 3
+  }
+];
+
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu("文化祭クロッフル")
+    .addItem("初期セットアップ", "setupFestivalSheets")
+    .addItem("時間枠を再生成", "refreshTimeSlotsFromSettings")
+    .addToUi();
+}
+
+function setupFestivalSheets() {
+  ensureFestivalSheets_();
+  refreshTimeSlotsFromSettings();
+  SpreadsheetApp.getUi().alert("シートの初期設定が完了しました。");
+}
+
+function refreshTimeSlotsFromSettings() {
+  ensureFestivalSheets_();
+
+  const settings = getSettingsMap_();
+  const rows = generateTimeSlotRowsFromSettings_(settings);
+  const sheet = getTimeSlotsSheet_();
+  const maxRows = Math.max(sheet.getLastRow() - 1, 0);
+
+  if (maxRows > 0) {
+    sheet.getRange(2, 1, maxRows, TIME_SLOTS_HEADER.length).clearContent();
+  }
+  if (rows.length) {
+    sheet.getRange(2, 1, rows.length, TIME_SLOTS_HEADER.length).setValues(rows);
+  }
+}
 
 function doGet(e) {
   return handleRequest_(e);
@@ -42,44 +120,45 @@ function doPost(e) {
 }
 
 function handleRequest_(e) {
-  var request = {};
+  let request = {};
 
   try {
+    ensureFestivalSheets_();
+    autoCancelExpiredOrders_();
     request = normalizeRequest_(e);
-    ensureSheet_();
     const action = String(request.action || "").trim();
     let result;
 
     switch (action) {
+      case "publicConfig":
+        result = publicConfig_();
+        break;
       case "createOrder":
         result = createOrder_(request);
         break;
-      case "getOrder":
-        result = getOrder_(request);
-        break;
-      case "updateOrder":
-        result = updateOrder_(request);
-        break;
-      case "cancelOrder":
-        result = cancelOrder_(request);
+      case "getCustomerOrder":
+        result = getCustomerOrder_(request);
         break;
       case "adminLogin":
         result = adminLogin_(request);
         break;
-      case "adminList":
-        result = adminList_(request);
+      case "adminDashboard":
+        result = adminDashboard_(request);
         break;
       case "adminUpdateStatus":
         result = adminUpdateStatus_(request);
         break;
-      case "displayList":
-        result = displayList_();
+      case "adminUpdateOperations":
+        result = adminUpdateOperations_(request);
+        break;
+      case "displayReadyOrders":
+        result = displayReadyOrders_();
         break;
       default:
         result = {
           ok: true,
-          message: "Festival order API is running.",
-          updatedAt: new Date().toISOString()
+          message: "Festival croffle API is running.",
+          updatedAt: isoNow_()
         };
     }
 
@@ -90,7 +169,7 @@ function handleRequest_(e) {
         ok: false,
         error: error.message || "Unexpected error",
         code: error.code || "ERROR",
-        updatedAt: new Date().toISOString()
+        updatedAt: isoNow_()
       },
       request.callback
     );
@@ -112,114 +191,90 @@ function normalizeRequest_(e) {
   return params;
 }
 
+function publicConfig_() {
+  return {
+    ok: true,
+    config: buildPublicConfig_(),
+    updatedAt: isoNow_()
+  };
+}
+
 function createOrder_(request) {
-  const payload = validateOrderPayload_(decodePayload_(requireParam_(request, "payload")));
-  const sheet = getSheet_();
+  const tokenPayload = decodePayload_(requireParam_(request, "payload"));
+  const selectedSlotId = requireParam_(request, "slotId");
+  const products = getProducts_();
+  const payload = validateOrderPayload_(tokenPayload, products);
   const lock = LockService.getScriptLock();
+  let response = null;
+  let createdOrder = null;
+  let customerToken = "";
+
   lock.waitLock(30000);
 
   try {
-    const orderNumber = nextOrderNumber_();
-    const editToken = generateEditToken_();
-    const now = new Date().toISOString();
-    const row = buildRowRecord_(orderNumber, editToken, payload, now, now, STATUS.RECEIVED);
-    sheet.appendRow(row);
+    autoCancelExpiredOrders_();
+    const publicConfig = buildPublicConfig_();
+    ensureOrderingOpen_(publicConfig.orderingState);
 
-    return {
+    const assignedSlot = chooseAvailableSlot_(publicConfig.slots, selectedSlotId, payload.totalCount);
+    const orderNumber = nextOrderNumber_();
+    customerToken = generateToken_();
+    const now = isoNow_();
+    const row = buildOrderRow_(orderNumber, customerToken, payload, assignedSlot, now, STATUS.PAYMENT_PENDING);
+
+    getOrdersSheet_().appendRow(row);
+    createdOrder = rowToOrder_(row);
+    response = {
       ok: true,
       orderNumber: orderNumber,
-      editToken: editToken,
-      status: STATUS.RECEIVED,
+      customerToken: customerToken,
+      customerUrl: buildCustomerUrl_(customerToken),
+      status: STATUS.PAYMENT_PENDING,
       totalAmount: payload.totalAmount,
+      totalCount: payload.totalCount,
+      pickupSlot: buildSlotResponse_(assignedSlot),
+      slotAdjusted: assignedSlot.id !== selectedSlotId,
       updatedAt: now
     };
   } finally {
     lock.releaseLock();
   }
+
+  sendNewOrderNotification_(createdOrder);
+  return response;
 }
 
-function getOrder_(request) {
+function getCustomerOrder_(request) {
   const token = requireParam_(request, "token");
-  const match = findRowByToken_(token);
+  const match = findOrderRowByToken_(token);
 
   if (!match) {
-    throw createError_("指定された注文が見つかりません。", "NOT_FOUND");
+    throw createError_("注文情報が見つかりません。URLを確認してください。", "NOT_FOUND");
   }
+
+  const orders = getOrders_();
+  const order = rowToOrder_(match.values);
+  const queueAhead = calculateGroupsAhead_(order, orders);
+  const publicConfig = buildPublicConfig_();
 
   return {
     ok: true,
-    order: rowToOrder_(match.values, match.row)
-  };
-}
-
-function updateOrder_(request) {
-  const token = requireParam_(request, "token");
-  const payload = validateOrderPayload_(decodePayload_(requireParam_(request, "payload")));
-  const match = findRowByToken_(token);
-
-  if (!match) {
-    throw createError_("指定された注文が見つかりません。", "NOT_FOUND");
-  }
-
-  const order = rowToOrder_(match.values, match.row);
-  if (!order.editable) {
-    throw createError_("この注文は変更できません。", "LOCKED");
-  }
-
-  const now = new Date().toISOString();
-  const updatedRow = buildRowRecord_(
-    order.orderNumber,
-    token,
-    payload,
-    order.orderedAt,
-    now,
-    STATUS.RECEIVED
-  );
-  getSheet_().getRange(match.row, 1, 1, updatedRow.length).setValues([updatedRow]);
-
-  return {
-    ok: true,
-    order: rowToOrder_(updatedRow, match.row)
-  };
-}
-
-function cancelOrder_(request) {
-  const token = requireParam_(request, "token");
-  const match = findRowByToken_(token);
-
-  if (!match) {
-    throw createError_("指定された注文が見つかりません。", "NOT_FOUND");
-  }
-
-  const order = rowToOrder_(match.values, match.row);
-  if (!order.editable) {
-    throw createError_("この注文はキャンセルできません。", "LOCKED");
-  }
-
-  const row = match.values.slice();
-  row[8] = new Date().toISOString();
-  row[9] = STATUS.CANCELED;
-  getSheet_().getRange(match.row, 1, 1, row.length).setValues([row]);
-
-  return {
-    ok: true,
-    order: rowToOrder_(row, match.row)
+    storeName: publicConfig.storeName,
+    order: order,
+    groupsAhead: queueAhead,
+    statusMessage: buildCustomerStatusMessage_(order, publicConfig),
+    updatedAt: isoNow_()
   };
 }
 
 function adminLogin_(request) {
   const passwordHash = String(requireParam_(request, "passwordHash")).toLowerCase();
-  if (ADMIN_PASSWORD_HASH === "PASTE_SHA256_HASH_HERE") {
-    throw createError_("Apps Script の `ADMIN_PASSWORD_HASH` を設定してください。", "CONFIG");
-  }
-
   if (passwordHash !== String(ADMIN_PASSWORD_HASH).toLowerCase()) {
     throw createError_("管理パスワードが正しくありません。", "UNAUTHORIZED");
   }
 
-  const sessionToken = generateEditToken_();
+  const sessionToken = generateToken_();
   CacheService.getScriptCache().put(sessionToken, "1", ADMIN_SESSION_TTL_SECONDS);
-
   return {
     ok: true,
     sessionToken: sessionToken,
@@ -227,23 +282,28 @@ function adminLogin_(request) {
   };
 }
 
-function adminList_(request) {
+function adminDashboard_(request) {
   requireAdminSession_(request);
 
-  const rows = getSheet_().getDataRange().getValues().slice(1);
-  const orders = rows
-    .map(function (row, index) {
-      return rowToOrder_(row, index + 2);
-    })
-    .sort(function (a, b) {
-      return orderNumberToInt_(b.orderNumber) - orderNumberToInt_(a.orderNumber);
-    });
+  const orders = getOrders_().sort(compareOrdersByQueue_);
+  const publicConfig = buildPublicConfig_();
+  const slotStats = buildSlotStats_(publicConfig.slots, orders);
 
   return {
     ok: true,
+    storeName: publicConfig.storeName,
     orders: orders,
-    stats: buildStats_(orders),
-    updatedAt: new Date().toISOString()
+    stats: buildAdminStats_(orders),
+    slotStats: slotStats,
+    operations: {
+      acceptingOrders: publicConfig.orderingState.acceptingOrders,
+      soldOut: publicConfig.orderingState.soldOut,
+      announcementMessage: publicConfig.announcementMessage,
+      saleWindowLabel: publicConfig.saleWindowLabel
+    },
+    products: publicConfig.products,
+    spreadsheetUrl: getSpreadsheet_().getUrl(),
+    updatedAt: isoNow_()
   };
 }
 
@@ -251,34 +311,83 @@ function adminUpdateStatus_(request) {
   requireAdminSession_(request);
 
   const orderNumber = requireParam_(request, "orderNumber");
-  const status = requireParam_(request, "status");
-  if (Object.values(STATUS).indexOf(status) === -1) {
-    throw createError_("不正なステータスです。", "INVALID_STATUS");
-  }
+  const nextStatus = requireParam_(request, "status");
+  const match = findOrderRowByOrderNumber_(orderNumber);
 
-  const match = findRowByOrderNumber_(orderNumber);
   if (!match) {
     throw createError_("注文番号が見つかりません。", "NOT_FOUND");
   }
+  if (Object.values(STATUS).indexOf(nextStatus) === -1) {
+    throw createError_("不正なステータスです。", "INVALID_STATUS");
+  }
 
   const row = match.values.slice();
-  row[8] = new Date().toISOString();
-  row[9] = status;
-  getSheet_().getRange(match.row, 1, 1, row.length).setValues([row]);
+  const currentOrder = rowToOrder_(row);
+
+  if (currentOrder.status === nextStatus) {
+    return {
+      ok: true,
+      order: currentOrder,
+      updatedAt: currentOrder.updatedAt
+    };
+  }
+  if (!isAllowedStatusTransition_(currentOrder.status, nextStatus)) {
+    throw createError_("このステータス変更はできません。", "INVALID_TRANSITION");
+  }
+
+  const now = isoNow_();
+  row[13] = now;
+  row[14] = nextStatus;
+
+  if (nextStatus === STATUS.COOKING_WAIT && !row[15]) {
+    row[15] = now;
+  }
+  if (nextStatus === STATUS.READY && !row[16]) {
+    row[16] = now;
+  }
+  if (nextStatus === STATUS.PICKED_UP && !row[17]) {
+    row[17] = now;
+  }
+  if (nextStatus === STATUS.CANCELED && !row[18]) {
+    row[18] = now;
+  }
+
+  getOrdersSheet_().getRange(match.row, 1, 1, row.length).setValues([row]);
+
+  const updatedOrder = rowToOrder_(row);
+  if (nextStatus === STATUS.READY) {
+    sendReadyNotification_(updatedOrder);
+  }
 
   return {
     ok: true,
-    order: rowToOrder_(row, match.row),
-    updatedAt: row[8]
+    order: updatedOrder,
+    updatedAt: now
   };
 }
 
-function displayList_() {
-  const rows = getSheet_().getDataRange().getValues().slice(1);
-  const orders = rows
-    .map(function (row, index) {
-      return rowToOrder_(row, index + 2);
-    })
+function adminUpdateOperations_(request) {
+  requireAdminSession_(request);
+
+  if (request.acceptingOrders !== undefined && request.acceptingOrders !== "") {
+    setSettingValue_("accepting_orders", normalizeBooleanString_(request.acceptingOrders));
+  }
+  if (request.soldOut !== undefined && request.soldOut !== "") {
+    setSettingValue_("sold_out", normalizeBooleanString_(request.soldOut));
+  }
+  if (request.announcementMessage !== undefined) {
+    setSettingValue_("announcement_message", String(request.announcementMessage || ""));
+  }
+
+  return {
+    ok: true,
+    config: buildPublicConfig_(),
+    updatedAt: isoNow_()
+  };
+}
+
+function displayReadyOrders_() {
+  const readyOrders = getOrders_()
     .filter(function (order) {
       return order.status === STATUS.READY;
     })
@@ -293,70 +402,178 @@ function displayList_() {
 
   return {
     ok: true,
-    orders: orders,
-    updatedAt: new Date().toISOString()
+    storeName: getSettingsMap_().store_name || "Un Deux Crois",
+    orders: readyOrders,
+    updatedAt: isoNow_()
   };
 }
 
-function buildRowRecord_(orderNumber, editToken, payload, orderedAt, updatedAt, status) {
-  const itemsSummary = payload.items
-    .map(function (item) {
-      return item.name + " × " + item.qty;
-    })
-    .join(" / ");
-  const qtySummary = payload.items
-    .map(function (item) {
-      return String(item.qty);
-    })
-    .join(" / ");
+function buildPublicConfig_() {
+  const settings = getSettingsMap_();
+  const products = getProducts_();
+  const orders = getOrders_();
+  const slots = getTimeSlots_(settings);
+  const slotStats = buildSlotStats_(slots, orders);
+  const publicSlots = slots.map(function (slot) {
+    const stats = slotStats.find(function (entry) {
+      return entry.id === slot.id;
+    }) || buildEmptySlotStats_(slot);
 
-  return [
-    orderNumber,
-    editToken,
-    payload.name,
-    payload.grade,
-    itemsSummary,
-    qtySummary,
-    payload.totalAmount,
-    orderedAt,
-    updatedAt,
-    status,
-    JSON.stringify(payload.items)
-  ];
-}
+    return {
+      id: slot.id,
+      label: slot.label,
+      startAt: slot.startAt,
+      endAt: slot.endAt,
+      capacity: slot.capacity,
+      reserved: stats.reservedQuantity,
+      remaining: stats.remaining,
+      pendingQuantity: stats.pendingQuantity,
+      paidQuantity: stats.paidQuantity
+    };
+  });
 
-function rowToOrder_(row) {
-  const items = parseItemsJson_(row[10]);
-  const order = {
-    orderNumber: String(row[0] || ""),
-    name: String(row[2] || ""),
-    grade: String(row[3] || ""),
-    items: items,
-    totalAmount: Number(row[6] || 0),
-    orderedAt: row[7],
-    updatedAt: row[8],
-    status: String(row[9] || STATUS.RECEIVED)
+  const orderingState = buildOrderingState_(settings, products, publicSlots);
+
+  return {
+    storeName: settings.store_name || "Un Deux Crois",
+    heroTitle: settings.hero_title || "クロッフル受け取り注文",
+    heroMessage: settings.hero_message || "商品を選んで受取時間を予約し、現地でAirペイ決済してください。",
+    announcementMessage: settings.announcement_message || "",
+    paymentMessage: settings.payment_message || "指定時間内にレジでAirペイ決済をお願いします。",
+    saleWindowLabel: buildSaleWindowLabel_(publicSlots),
+    orderingState: orderingState,
+    products: products.map(function (product) {
+      return {
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        imageUrl: product.imageUrl
+      };
+    }),
+    slots: publicSlots
   };
-  order.editable = EDITABLE_STATUSES.indexOf(order.status) !== -1;
-  return order;
 }
 
-function parseItemsJson_(itemsJson) {
-  if (!itemsJson) {
-    return [];
+function buildOrderingState_(settings, products, slots) {
+  const now = new Date();
+  const acceptingOrders = coerceBoolean_(settings.accepting_orders, true);
+  const soldOut = coerceBoolean_(settings.sold_out, false);
+  const firstSlot = slots[0] || null;
+  const lastSlot = slots.length ? slots[slots.length - 1] : null;
+  const openSlots = slots.filter(function (slot) {
+    return new Date(slot.endAt).getTime() > now.getTime();
+  });
+  const hasCapacity = openSlots.some(function (slot) {
+    return slot.remaining > 0;
+  });
+
+  if (!products.length) {
+    return {
+      isOpen: false,
+      mode: "no_products",
+      message: "販売商品が設定されていません。",
+      acceptingOrders: false,
+      soldOut: soldOut
+    };
+  }
+  if (!slots.length) {
+    return {
+      isOpen: false,
+      mode: "no_slots",
+      message: "時間枠が設定されていません。",
+      acceptingOrders: false,
+      soldOut: soldOut
+    };
+  }
+  if (soldOut) {
+    return {
+      isOpen: false,
+      mode: "sold_out",
+      message: settings.sold_out_message || "本日の販売は完売しました。",
+      acceptingOrders: acceptingOrders,
+      soldOut: true
+    };
+  }
+  if (!acceptingOrders) {
+    return {
+      isOpen: false,
+      mode: "paused",
+      message: settings.order_stop_message || "ただいま受付を停止しています。",
+      acceptingOrders: false,
+      soldOut: false
+    };
+  }
+  if (firstSlot && now.getTime() < new Date(firstSlot.startAt).getTime()) {
+    return {
+      isOpen: false,
+      mode: "before_sale",
+      message: "受付開始は " + formatTime_(firstSlot.startAt) + " です。",
+      acceptingOrders: true,
+      soldOut: false
+    };
+  }
+  if (!openSlots.length || (lastSlot && now.getTime() >= new Date(lastSlot.endAt).getTime())) {
+    return {
+      isOpen: false,
+      mode: "after_sale",
+      message: settings.order_closed_message || "本日の受付は終了しました。",
+      acceptingOrders: true,
+      soldOut: false
+    };
+  }
+  if (!hasCapacity) {
+    return {
+      isOpen: false,
+      mode: "slot_full",
+      message: settings.sold_out_message || "空いている時間枠がありません。",
+      acceptingOrders: true,
+      soldOut: false
+    };
   }
 
-  try {
-    return JSON.parse(itemsJson);
-  } catch (error) {
-    return [];
+  return {
+    isOpen: true,
+    mode: "open",
+    message: settings.announcement_message || "",
+    acceptingOrders: true,
+    soldOut: false
+  };
+}
+
+function ensureOrderingOpen_(orderingState) {
+  if (!orderingState || !orderingState.isOpen) {
+    throw createError_((orderingState && orderingState.message) || "ただいま受付できません。", "ORDER_CLOSED");
   }
 }
 
-function validateOrderPayload_(payload) {
+function chooseAvailableSlot_(slots, selectedSlotId, requiredQuantity) {
+  const nowMs = Date.now();
+  const usableSlots = slots.filter(function (slot) {
+    return new Date(slot.endAt).getTime() > nowMs;
+  });
+  const selectedIndex = usableSlots.findIndex(function (slot) {
+    return slot.id === selectedSlotId;
+  });
+  const startIndex = selectedIndex >= 0 ? selectedIndex : 0;
+
+  for (let index = startIndex; index < usableSlots.length; index += 1) {
+    if (usableSlots[index].remaining >= requiredQuantity) {
+      return usableSlots[index];
+    }
+  }
+
+  throw createError_("希望数を受け取れる時間枠がありません。個数を減らすか次の枠を確認してください。", "SLOT_UNAVAILABLE");
+}
+
+function validateOrderPayload_(payload, products) {
+  const productMap = products.reduce(function (result, product) {
+    result[product.id] = product;
+    return result;
+  }, {});
   const name = String((payload && payload.name) || "").trim();
   const grade = String((payload && payload.grade) || "").trim();
-  const inputItems = (payload && payload.items) || [];
+  const inputItems = Array.isArray(payload && payload.items) ? payload.items : [];
 
   if (!name) {
     throw createError_("名前を入力してください。", "INVALID_NAME");
@@ -367,73 +584,437 @@ function validateOrderPayload_(payload) {
   if (grade.length > 20) {
     throw createError_("学年は20文字以内で入力してください。", "INVALID_GRADE");
   }
-  if (!Array.isArray(inputItems) || !inputItems.length) {
-    throw createError_("1つ以上の商品を選んでください。", "INVALID_ITEMS");
+  if (!inputItems.length) {
+    throw createError_("商品を1つ以上選んでください。", "INVALID_ITEMS");
   }
 
-  const quantityById = inputItems.reduce(function (result, item) {
-    const id = String(item.id || "");
-    const qty = Number(item.qty || 0);
+  const mergedItems = {};
+  inputItems.forEach(function (item) {
+    const productId = String(item.id || "");
+    const quantity = Number(item.qty || 0);
 
-    if (!PRODUCT_CATALOG[id]) {
-      throw createError_("不正な商品が含まれています。", "INVALID_PRODUCT");
+    if (!productMap[productId]) {
+      throw createError_("無効な商品が含まれています。", "INVALID_PRODUCT");
     }
-    if (!Number.isInteger(qty) || qty < 1 || qty > 20) {
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
       throw createError_("数量は1〜20の整数で指定してください。", "INVALID_QUANTITY");
     }
+    mergedItems[productId] = (mergedItems[productId] || 0) + quantity;
+  });
 
-    result[id] = (result[id] || 0) + qty;
-    return result;
-  }, {});
-
-  let totalAmount = 0;
   let totalCount = 0;
-  const items = Object.keys(quantityById).map(function (id) {
-    const catalog = PRODUCT_CATALOG[id];
-    const qty = quantityById[id];
-
-    if (qty > 20) {
-      throw createError_("同じ商品の数量は20個までです。", "INVALID_QUANTITY");
-    }
-
-    const normalizedItem = {
-      id: id,
-      name: catalog.name,
-      price: catalog.price,
-      qty: qty,
-      subtotal: catalog.price * qty
-    };
-    totalAmount += normalizedItem.subtotal;
+  let totalAmount = 0;
+  const items = Object.keys(mergedItems).map(function (productId) {
+    const product = productMap[productId];
+    const qty = mergedItems[productId];
+    const subtotal = product.price * qty;
     totalCount += qty;
-    return normalizedItem;
+    totalAmount += subtotal;
+    return {
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      imageUrl: product.imageUrl,
+      price: product.price,
+      qty: qty,
+      subtotal: subtotal
+    };
   });
 
   if (totalCount > 50) {
-    throw createError_("一度に注文できる数は50個までです。", "TOO_MANY_ITEMS");
+    throw createError_("一度に注文できるのは50個までです。", "TOO_MANY_ITEMS");
   }
 
   return {
     name: name,
     grade: grade,
     items: items,
+    totalCount: totalCount,
     totalAmount: totalAmount
   };
 }
 
-function decodePayload_(payloadBase64) {
+function buildOrderRow_(orderNumber, token, payload, slot, now, status) {
+  return [
+    orderNumber,
+    token,
+    payload.name,
+    payload.grade,
+    slot.id,
+    slot.label,
+    slot.startAt,
+    slot.endAt,
+    payload.items.map(function (item) {
+      return item.name;
+    }).join(" / "),
+    payload.items.map(function (item) {
+      return String(item.qty);
+    }).join(" / "),
+    payload.totalCount,
+    payload.totalAmount,
+    now,
+    now,
+    status,
+    "",
+    "",
+    "",
+    "",
+    JSON.stringify(payload.items)
+  ];
+}
+
+function rowToOrder_(row) {
+  const order = {
+    orderNumber: String(row[0] || ""),
+    customerToken: String(row[1] || ""),
+    customerUrl: buildCustomerUrl_(row[1]),
+    name: String(row[2] || ""),
+    grade: String(row[3] || ""),
+    slotId: String(row[4] || ""),
+    slotLabel: String(row[5] || ""),
+    slotStart: row[6],
+    slotEnd: row[7],
+    totalCount: Number(row[10] || 0),
+    totalAmount: Number(row[11] || 0),
+    orderedAt: row[12],
+    updatedAt: row[13],
+    status: String(row[14] || STATUS.PAYMENT_PENDING),
+    paidAt: row[15] || "",
+    readyAt: row[16] || "",
+    pickedUpAt: row[17] || "",
+    canceledAt: row[18] || "",
+    items: parseItemsJson_(row[19])
+  };
+  return order;
+}
+
+function parseItemsJson_(jsonValue) {
+  if (!jsonValue) {
+    return [];
+  }
+
   try {
-    const bytes = Utilities.base64DecodeWebSafe(payloadBase64);
-    const json = Utilities.newBlob(bytes).getDataAsString("UTF-8");
-    return JSON.parse(json);
+    return JSON.parse(jsonValue);
   } catch (error) {
-    throw createError_("注文データを読み取れませんでした。", "INVALID_PAYLOAD");
+    return [];
   }
 }
 
-function findRowByToken_(token) {
-  const rows = getSheet_().getDataRange().getValues();
-  for (var rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
-    if (String(rows[rowIndex][1]) === token) {
+function calculateGroupsAhead_(currentOrder, orders) {
+  if (QUEUE_STATUSES.indexOf(currentOrder.status) === -1) {
+    return 0;
+  }
+
+  const queue = orders
+    .filter(function (order) {
+      return QUEUE_STATUSES.indexOf(order.status) !== -1;
+    })
+    .sort(compareOrdersByQueue_);
+
+  const index = queue.findIndex(function (order) {
+    return order.orderNumber === currentOrder.orderNumber;
+  });
+  return index >= 0 ? index : 0;
+}
+
+function compareOrdersByQueue_(a, b) {
+  const slotCompare = new Date(a.slotStart).getTime() - new Date(b.slotStart).getTime();
+  if (slotCompare !== 0) {
+    return slotCompare;
+  }
+  return orderNumberToInt_(a.orderNumber) - orderNumberToInt_(b.orderNumber);
+}
+
+function buildCustomerStatusMessage_(order, publicConfig) {
+  if (order.status === STATUS.PAYMENT_PENDING) {
+    return publicConfig.paymentMessage || "指定時間内にレジでAirペイ決済をお願いします。";
+  }
+  if (order.status === STATUS.COOKING_WAIT) {
+    return "決済が完了しました。商品を準備しています。";
+  }
+  if (order.status === STATUS.READY) {
+    return "商品が完成しました。受取カウンターへお越しください。";
+  }
+  if (order.status === STATUS.PICKED_UP) {
+    return "受け取り完了です。ご利用ありがとうございました。";
+  }
+  if (order.status === STATUS.CANCELED) {
+    return "時間枠終了までに決済が確認できなかったため、自動キャンセルになりました。";
+  }
+  return "";
+}
+
+function buildAdminStats_(orders) {
+  return orders.reduce(
+    function (stats, order) {
+      stats.totalOrders += 1;
+      stats.totalQuantity += order.totalCount;
+      if (order.status !== STATUS.CANCELED) {
+        stats.projectedRevenue += order.totalAmount;
+      }
+      if (PAID_STATUSES.indexOf(order.status) !== -1) {
+        stats.paidRevenue += order.totalAmount;
+        stats.paidQuantity += order.totalCount;
+      }
+      if (order.status === STATUS.PAYMENT_PENDING) {
+        stats.pendingCount += 1;
+      }
+      if (order.status === STATUS.COOKING_WAIT) {
+        stats.cookingCount += 1;
+      }
+      if (order.status === STATUS.READY) {
+        stats.readyCount += 1;
+      }
+      if (order.status === STATUS.PICKED_UP) {
+        stats.pickedUpCount += 1;
+      }
+      if (order.status === STATUS.CANCELED) {
+        stats.canceledCount += 1;
+        stats.canceledQuantity += order.totalCount;
+      }
+      return stats;
+    },
+    {
+      totalOrders: 0,
+      totalQuantity: 0,
+      paidQuantity: 0,
+      canceledQuantity: 0,
+      projectedRevenue: 0,
+      paidRevenue: 0,
+      pendingCount: 0,
+      cookingCount: 0,
+      readyCount: 0,
+      pickedUpCount: 0,
+      canceledCount: 0
+    }
+  );
+}
+
+function buildSlotStats_(slots, orders) {
+  return slots.map(function (slot) {
+    const stats = buildEmptySlotStats_(slot);
+
+    orders.forEach(function (order) {
+      if (order.slotId !== slot.id) {
+        return;
+      }
+
+      if (ACTIVE_SLOT_STATUSES.indexOf(order.status) !== -1) {
+        stats.reservedQuantity += order.totalCount;
+      }
+      if (order.status === STATUS.PAYMENT_PENDING) {
+        stats.pendingQuantity += order.totalCount;
+      }
+      if (PAID_STATUSES.indexOf(order.status) !== -1) {
+        stats.paidQuantity += order.totalCount;
+        stats.paidRevenue += order.totalAmount;
+      }
+      if (order.status === STATUS.CANCELED) {
+        stats.canceledQuantity += order.totalCount;
+      }
+    });
+
+    stats.remaining = Math.max(0, slot.capacity - stats.reservedQuantity);
+    return stats;
+  });
+}
+
+function buildEmptySlotStats_(slot) {
+  return {
+    id: slot.id,
+    label: slot.label,
+    startAt: slot.startAt,
+    endAt: slot.endAt,
+    capacity: slot.capacity,
+    reservedQuantity: 0,
+    pendingQuantity: 0,
+    paidQuantity: 0,
+    paidRevenue: 0,
+    canceledQuantity: 0,
+    remaining: slot.capacity
+  };
+}
+
+function autoCancelExpiredOrders_() {
+  const sheet = getOrdersSheet_();
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) {
+    return;
+  }
+
+  const nowMs = Date.now();
+  const updates = [];
+
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    const row = rows[rowIndex];
+    const status = String(row[14] || STATUS.PAYMENT_PENDING);
+    const slotEndMs = new Date(row[7]).getTime();
+
+    if (status === STATUS.PAYMENT_PENDING && slotEndMs && slotEndMs <= nowMs) {
+      row[13] = isoNow_();
+      row[14] = STATUS.CANCELED;
+      if (!row[18]) {
+        row[18] = row[13];
+      }
+      updates.push({
+        row: rowIndex + 1,
+        values: row
+      });
+    }
+  }
+
+  updates.forEach(function (update) {
+    sheet.getRange(update.row, 1, 1, update.values.length).setValues([update.values]);
+  });
+}
+
+function isAllowedStatusTransition_(currentStatus, nextStatus) {
+  const transitionMap = {};
+  transitionMap[STATUS.PAYMENT_PENDING] = [STATUS.COOKING_WAIT, STATUS.CANCELED];
+  transitionMap[STATUS.COOKING_WAIT] = [STATUS.READY, STATUS.CANCELED];
+  transitionMap[STATUS.READY] = [STATUS.PICKED_UP];
+  transitionMap[STATUS.PICKED_UP] = [];
+  transitionMap[STATUS.CANCELED] = [];
+
+  return (transitionMap[currentStatus] || []).indexOf(nextStatus) !== -1;
+}
+
+function getOrders_() {
+  const rows = getOrdersSheet_().getDataRange().getValues().slice(1);
+  return rows.map(function (row) {
+    return rowToOrder_(row);
+  });
+}
+
+function getProducts_() {
+  const rows = getProductsSheet_().getDataRange().getValues().slice(1);
+
+  return rows
+    .map(function (row, index) {
+      const active = coerceBoolean_(row[0], true);
+      const productId = String(row[1] || "product_" + (index + 1)).trim();
+      const name = String(row[2] || "").trim();
+      const description = String(row[3] || "").trim();
+      const price = Number(row[4] || 0);
+      const imageUrl = String(row[5] || "").trim();
+      const sortOrder = Number(row[6] || index + 1);
+
+      return {
+        active: active,
+        id: productId,
+        name: name,
+        description: description,
+        price: price,
+        imageUrl: imageUrl,
+        sortOrder: sortOrder
+      };
+    })
+    .filter(function (product) {
+      return product.active && product.id && product.name && product.price > 0;
+    })
+    .sort(function (a, b) {
+      return a.sortOrder - b.sortOrder;
+    });
+}
+
+function getTimeSlots_(settings) {
+  const rows = getTimeSlotsSheet_().getDataRange().getValues().slice(1);
+  const saleDate = normalizeDateString_(settings.sale_date || formatDate_(new Date(), "yyyy-MM-dd"));
+
+  if (!rows.length || rows.every(function (row) {
+    return !String(row[1] || "").trim();
+  })) {
+    const generatedRows = generateTimeSlotRowsFromSettings_(settings);
+    if (generatedRows.length) {
+      getTimeSlotsSheet_().getRange(2, 1, generatedRows.length, TIME_SLOTS_HEADER.length).setValues(generatedRows);
+      return getTimeSlots_(settings);
+    }
+  }
+
+  return rows
+    .map(function (row, index) {
+      const active = coerceBoolean_(row[0], true);
+      const slotId = String(row[1] || "slot_" + (index + 1)).trim();
+      const startTime = normalizeTimeText_(row[3]);
+      const endTime = normalizeTimeText_(row[4]);
+      const label = String(row[2] || buildSlotLabel_(startTime, endTime)).trim();
+      const capacity = Number(row[5] || 0);
+      const sortOrder = Number(row[6] || index + 1);
+
+      return {
+        active: active,
+        id: slotId,
+        label: label || buildSlotLabel_(startTime, endTime),
+        startAt: buildIsoDateTime_(saleDate, startTime),
+        endAt: buildIsoDateTime_(saleDate, endTime),
+        capacity: capacity,
+        sortOrder: sortOrder
+      };
+    })
+    .filter(function (slot) {
+      return slot.active && slot.id && slot.capacity > 0 && slot.startAt && slot.endAt;
+    })
+    .sort(function (a, b) {
+      return a.sortOrder - b.sortOrder;
+    });
+}
+
+function generateTimeSlotRowsFromSettings_(settings) {
+  const startTime = normalizeTimeText_(settings.sale_start_time || "12:00");
+  const endTime = normalizeTimeText_(settings.sale_end_time || "15:00");
+  const slotMinutes = Number(settings.slot_minutes || 30);
+  const capacity = Number(settings.default_slot_capacity || 100);
+  const startMinutes = timeTextToMinutes_(startTime);
+  const endMinutes = timeTextToMinutes_(endTime);
+
+  if (!startTime || !endTime || !slotMinutes || !capacity || endMinutes <= startMinutes) {
+    throw createError_("Settings シートの販売時間または時間枠設定が不正です。", "INVALID_SETTINGS");
+  }
+
+  const rows = [];
+  let sortOrder = 1;
+
+  for (let cursor = startMinutes; cursor < endMinutes; cursor += slotMinutes) {
+    const next = Math.min(cursor + slotMinutes, endMinutes);
+    const slotStart = minutesToTimeText_(cursor);
+    const slotEnd = minutesToTimeText_(next);
+    rows.push([
+      true,
+      "slot_" + Utilities.formatString("%02d", sortOrder),
+      buildSlotLabel_(slotStart, slotEnd),
+      slotStart,
+      slotEnd,
+      capacity,
+      sortOrder
+    ]);
+    sortOrder += 1;
+  }
+
+  return rows;
+}
+
+function buildSaleWindowLabel_(slots) {
+  if (!slots.length) {
+    return "-";
+  }
+  return formatTime_(slots[0].startAt) + "〜" + formatTime_(slots[slots.length - 1].endAt);
+}
+
+function buildSlotResponse_(slot) {
+  return {
+    id: slot.id,
+    label: slot.label,
+    startAt: slot.startAt,
+    endAt: slot.endAt,
+    capacity: slot.capacity,
+    remaining: slot.remaining
+  };
+}
+
+function findOrderRowByToken_(token) {
+  const rows = getOrdersSheet_().getDataRange().getValues();
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    if (String(rows[rowIndex][1] || "") === token) {
       return {
         row: rowIndex + 1,
         values: rows[rowIndex]
@@ -443,10 +1024,10 @@ function findRowByToken_(token) {
   return null;
 }
 
-function findRowByOrderNumber_(orderNumber) {
-  const rows = getSheet_().getDataRange().getValues();
-  for (var rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
-    if (String(rows[rowIndex][0]) === orderNumber) {
+function findOrderRowByOrderNumber_(orderNumber) {
+  const rows = getOrdersSheet_().getDataRange().getValues();
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    if (String(rows[rowIndex][0] || "") === orderNumber) {
       return {
         row: rowIndex + 1,
         values: rows[rowIndex]
@@ -458,79 +1039,232 @@ function findRowByOrderNumber_(orderNumber) {
 
 function nextOrderNumber_() {
   const properties = PropertiesService.getScriptProperties();
-  const lockValue = Number(properties.getProperty(SCRIPT_PROPERTY_LAST_NUMBER) || 0);
-  let nextValue = lockValue;
+  let current = Number(properties.getProperty(LAST_ORDER_NUMBER_KEY) || 0);
 
-  if (!nextValue) {
-    const rows = getSheet_().getDataRange().getValues().slice(1);
-    nextValue = rows.reduce(function (maxValue, row) {
-      return Math.max(maxValue, orderNumberToInt_(row[0]));
+  if (!current) {
+    current = getOrders_().reduce(function (maxValue, order) {
+      return Math.max(maxValue, orderNumberToInt_(order.orderNumber));
     }, 100);
   }
 
-  nextValue += 1;
-  properties.setProperty(SCRIPT_PROPERTY_LAST_NUMBER, String(nextValue));
-  return "#" + nextValue;
-}
-
-function orderNumberToInt_(value) {
-  return Number(String(value || "").replace(/[^\d]/g, "")) || 0;
-}
-
-function buildStats_(orders) {
-  return orders.reduce(
-    function (stats, order) {
-      stats.total += 1;
-      stats[order.status] = (stats[order.status] || 0) + 1;
-      return stats;
-    },
-    { total: 0, "受付中": 0, "調理中": 0, "完成": 0, "受取済み": 0, "キャンセル": 0 }
-  );
+  current += 1;
+  properties.setProperty(LAST_ORDER_NUMBER_KEY, String(current));
+  return "#" + current;
 }
 
 function requireAdminSession_(request) {
   const sessionToken = requireParam_(request, "sessionToken");
-  const session = CacheService.getScriptCache().get(sessionToken);
-  if (!session) {
-    throw createError_("セッションの有効期限が切れました。再ログインしてください。", "UNAUTHORIZED");
+  const active = CacheService.getScriptCache().get(sessionToken);
+  if (!active) {
+    throw createError_("セッションが切れました。再ログインしてください。", "UNAUTHORIZED");
   }
-  return sessionToken;
 }
 
-function ensureSheet_() {
+function ensureFestivalSheets_() {
   const spreadsheet = getSpreadsheet_();
   if (!spreadsheet) {
-    throw createError_("スプレッドシートに接続できません。紐づけ型で実行するか、SPREADSHEET_ID を設定してください。", "NO_SPREADSHEET");
+    throw createError_("スプレッドシートに接続できません。SPREADSHEET_ID を確認してください。", "NO_SPREADSHEET");
   }
 
-  let sheet = spreadsheet.getSheetByName(SHEET_NAME);
+  ensureSheetWithHeader_(SHEETS.settings, SETTINGS_HEADER);
+  ensureSheetWithHeader_(SHEETS.products, PRODUCTS_HEADER);
+  ensureSheetWithHeader_(SHEETS.timeSlots, TIME_SLOTS_HEADER);
+  ensureSheetWithHeader_(SHEETS.orders, ORDER_HEADER);
+  seedSettingsSheet_();
+  seedProductsSheet_();
+  seedTimeSlotsSheet_();
+}
+
+function ensureSheetWithHeader_(name, header) {
+  const spreadsheet = getSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(name);
+
   if (!sheet) {
-    sheet = spreadsheet.insertSheet(SHEET_NAME);
+    sheet = spreadsheet.insertSheet(name);
+  }
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, header.length).setValues([header]);
+    sheet.setFrozenRows(1);
+    return sheet;
   }
 
-  if (sheet.getLastRow() === 0) {
-    sheet.getRange(1, 1, 1, HEADER.length).setValues([HEADER]);
+  const currentHeader = sheet.getRange(1, 1, 1, header.length).getValues()[0];
+  if (String(currentHeader[0] || "") !== header[0]) {
+    sheet.insertRows(1, 1);
+    sheet.getRange(1, 1, 1, header.length).setValues([header]);
     sheet.setFrozenRows(1);
-  } else {
-    const firstRow = sheet.getRange(1, 1, 1, HEADER.length).getValues()[0];
-    if (String(firstRow[0]) !== HEADER[0]) {
-      sheet.insertRows(1, 1);
-      sheet.getRange(1, 1, 1, HEADER.length).setValues([HEADER]);
-      sheet.setFrozenRows(1);
-    }
+  }
+
+  return sheet;
+}
+
+function seedSettingsSheet_() {
+  const sheet = getSettingsSheet_();
+  if (sheet.getLastRow() > 1) {
+    return;
+  }
+
+  const saleDate = formatDate_(new Date(), "yyyy-MM-dd");
+  const rows = [
+    ["store_name", "Un Deux Crois", "店舗名"],
+    ["hero_title", "クロッフル受け取り注文", "注文画面のタイトル"],
+    ["hero_message", "商品を選んで受取時間を予約し、現地でAirペイ決済してください。", "注文画面説明文"],
+    ["announcement_message", "注文番号はスクリーンショットで保存してください。", "上部のお知らせ"],
+    ["payment_message", "指定時間内にレジでAirペイ決済をお願いします。", "お客様待機画面の決済案内"],
+    ["order_stop_message", "ただいま受付を停止しています。", "受付停止時メッセージ"],
+    ["order_closed_message", "本日の受付は終了しました。", "販売終了時メッセージ"],
+    ["sold_out_message", "本日のクロッフルは完売しました。", "完売時メッセージ"],
+    ["sale_date", saleDate, "販売日 yyyy-mm-dd"],
+    ["sale_start_time", "12:00", "販売開始 HH:mm"],
+    ["sale_end_time", "15:00", "販売終了 HH:mm"],
+    ["slot_minutes", "30", "時間枠の長さ（分）"],
+    ["default_slot_capacity", "100", "各時間枠の初期上限数"],
+    ["accepting_orders", "TRUE", "TRUE/FALSE で受付停止・再開"],
+    ["sold_out", "FALSE", "TRUE/FALSE で完売切替"]
+  ];
+
+  sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+}
+
+function seedProductsSheet_() {
+  const sheet = getProductsSheet_();
+  if (sheet.getLastRow() > 1) {
+    return;
+  }
+
+  const rows = DEFAULT_PRODUCTS.map(function (product) {
+    return [
+      product.active,
+      product.productId,
+      product.name,
+      product.description,
+      product.price,
+      product.imageUrl,
+      product.sortOrder
+    ];
+  });
+  sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+}
+
+function seedTimeSlotsSheet_() {
+  const sheet = getTimeSlotsSheet_();
+  if (sheet.getLastRow() > 1) {
+    return;
+  }
+  const rows = generateTimeSlotRowsFromSettings_(getSettingsMap_());
+  if (rows.length) {
+    sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
   }
 }
 
-function getSheet_() {
-  return getSpreadsheet_().getSheetByName(SHEET_NAME);
+function getSettingsMap_() {
+  const rows = getSettingsSheet_().getDataRange().getValues().slice(1);
+  return rows.reduce(function (result, row) {
+    const key = String(row[0] || "").trim();
+    if (key) {
+      result[key] = row[1];
+    }
+    return result;
+  }, {});
+}
+
+function setSettingValue_(key, value) {
+  const sheet = getSettingsSheet_();
+  const rows = sheet.getDataRange().getValues();
+
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    if (String(rows[rowIndex][0] || "").trim() === key) {
+      sheet.getRange(rowIndex + 1, 2).setValue(value);
+      return;
+    }
+  }
+
+  sheet.appendRow([key, value, ""]);
+}
+
+function getSettingsSheet_() {
+  return getSpreadsheet_().getSheetByName(SHEETS.settings);
+}
+
+function getProductsSheet_() {
+  return getSpreadsheet_().getSheetByName(SHEETS.products);
+}
+
+function getTimeSlotsSheet_() {
+  return getSpreadsheet_().getSheetByName(SHEETS.timeSlots);
+}
+
+function getOrdersSheet_() {
+  return getSpreadsheet_().getSheetByName(SHEETS.orders);
 }
 
 function getSpreadsheet_() {
   if (SPREADSHEET_ID && SPREADSHEET_ID !== "PASTE_SPREADSHEET_ID_HERE") {
     return SpreadsheetApp.openById(SPREADSHEET_ID);
   }
-
   return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+function sendNewOrderNotification_(order) {
+  sendOrderNotificationSafely_("new", order);
+}
+
+function sendReadyNotification_(order) {
+  sendOrderNotificationSafely_("ready", order);
+}
+
+function sendOrderNotificationSafely_(kind, order) {
+  if (!NOTIFICATION_EMAIL || !order) {
+    return;
+  }
+
+  try {
+    MailApp.sendEmail({
+      to: NOTIFICATION_EMAIL,
+      subject: buildNotificationSubject_(kind, order),
+      body: buildNotificationBody_(kind, order)
+    });
+  } catch (error) {
+    Logger.log("Notification email failed: " + error);
+  }
+}
+
+function buildNotificationSubject_(kind, order) {
+  const prefix = "[" + (getSettingsMap_().store_name || "Un Deux Crois") + "]";
+  if (kind === "ready") {
+    return prefix + " 商品が完成しました " + order.orderNumber;
+  }
+  return prefix + " 新しい注文 " + order.orderNumber;
+}
+
+function buildNotificationBody_(kind, order) {
+  const lines = [
+    kind === "ready" ? "注文が完成になりました。" : "新しい注文が入りました。",
+    "",
+    "注文番号: " + order.orderNumber,
+    "名前: " + order.name,
+    "学年: " + (order.grade || "-"),
+    "受取時間: " + order.slotLabel,
+    "ステータス: " + order.status,
+    "合計金額: " + formatCurrencyYen_(order.totalAmount),
+    "",
+    "注文内容:"
+  ];
+
+  order.items.forEach(function (item) {
+    lines.push("- " + item.name + " × " + item.qty + " (" + formatCurrencyYen_(item.subtotal) + ")");
+  });
+
+  lines.push("");
+  lines.push("お客様ページ: " + buildCustomerUrl_(order.customerToken));
+  return lines.join("\n");
+}
+
+function buildCustomerUrl_(token) {
+  if (!PUBLIC_SITE_URL || !token) {
+    return "";
+  }
+  return String(PUBLIC_SITE_URL).replace(/\/+$/, "") + "/customer.html?token=" + encodeURIComponent(token);
 }
 
 function buildResponse_(payload, callback) {
@@ -547,11 +1281,18 @@ function buildResponse_(payload, callback) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function generateEditToken_() {
-  return [
-    Utilities.getUuid().replace(/-/g, ""),
-    Utilities.getUuid().replace(/-/g, "")
-  ].join("");
+function decodePayload_(payloadBase64) {
+  try {
+    const bytes = Utilities.base64DecodeWebSafe(payloadBase64);
+    const json = Utilities.newBlob(bytes).getDataAsString("UTF-8");
+    return JSON.parse(json);
+  } catch (error) {
+    throw createError_("注文データを読み取れませんでした。", "INVALID_PAYLOAD");
+  }
+}
+
+function generateToken_() {
+  return Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "");
 }
 
 function requireParam_(request, key) {
@@ -566,4 +1307,92 @@ function createError_(message, code) {
   const error = new Error(message);
   error.code = code || "ERROR";
   return error;
+}
+
+function isoNow_() {
+  return new Date().toISOString();
+}
+
+function orderNumberToInt_(value) {
+  return Number(String(value || "").replace(/[^\d]/g, "")) || 0;
+}
+
+function coerceBoolean_(value, fallback) {
+  if (value === true || value === false) {
+    return value;
+  }
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["true", "1", "yes", "on"].indexOf(normalized) !== -1) {
+    return true;
+  }
+  if (["false", "0", "no", "off"].indexOf(normalized) !== -1) {
+    return false;
+  }
+  return Boolean(fallback);
+}
+
+function normalizeBooleanString_(value) {
+  return coerceBoolean_(value, false) ? "TRUE" : "FALSE";
+}
+
+function normalizeDateString_(value) {
+  if (value instanceof Date) {
+    return formatDate_(value, "yyyy-MM-dd");
+  }
+  const raw = String(value || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+  const date = new Date(raw);
+  return isNaN(date.getTime()) ? formatDate_(new Date(), "yyyy-MM-dd") : formatDate_(date, "yyyy-MM-dd");
+}
+
+function normalizeTimeText_(value) {
+  if (value instanceof Date) {
+    return formatDate_(value, "HH:mm");
+  }
+  const raw = String(value || "").trim();
+  if (/^\d{1,2}:\d{2}$/.test(raw)) {
+    const parts = raw.split(":");
+    return Utilities.formatString("%02d:%02d", Number(parts[0]), Number(parts[1]));
+  }
+  return "";
+}
+
+function timeTextToMinutes_(timeText) {
+  const parts = String(timeText || "00:00").split(":");
+  return Number(parts[0] || 0) * 60 + Number(parts[1] || 0);
+}
+
+function minutesToTimeText_(minutes) {
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  return Utilities.formatString("%02d:%02d", hour, minute);
+}
+
+function buildSlotLabel_(startTime, endTime) {
+  return String(startTime || "") + "〜" + String(endTime || "");
+}
+
+function buildIsoDateTime_(dateText, timeText) {
+  if (!dateText || !timeText) {
+    return "";
+  }
+  return dateText + "T" + timeText + ":00";
+}
+
+function formatDate_(date, pattern) {
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), pattern);
+}
+
+function formatTime_(value) {
+  const date = new Date(value);
+  if (isNaN(date.getTime())) {
+    return String(value || "-");
+  }
+  return formatDate_(date, "HH:mm");
+}
+
+function formatCurrencyYen_(value) {
+  return "¥" + Number(value || 0).toLocaleString("ja-JP");
 }

@@ -1,8 +1,10 @@
-const CACHE_NAME = "festival-order-pwa-v3";
+const CACHE_NAME = "festival-croffle-pwa-v4";
 const CORE_ASSETS = [
   "./",
   "./index.html",
-  "./edit.html",
+  "./customer.html",
+  "./cashier.html",
+  "./handover.html",
   "./admin.html",
   "./display.html",
   "./style.css",

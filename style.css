@@ -14,7 +14,7 @@
   --teal: #1a7f8f;
   --berry: #ff4d8d;
   --line: rgba(31, 44, 68, 0.12);
-  --card: rgba(255, 255, 255, 0.88);
+  --card: rgba(255, 255, 255, 0.9);
   --shadow-lg: 0 20px 45px rgba(31, 44, 68, 0.13);
   --shadow-md: 0 10px 24px rgba(31, 44, 68, 0.11);
   --radius-2xl: 32px;
@@ -93,7 +93,8 @@ a {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -102,9 +103,13 @@ button {
 }
 
 .app-shell {
-  width: min(calc(100% - 28px), 1120px);
+  width: min(calc(100% - 28px), 1140px);
   margin: 0 auto;
   padding: 20px 0 56px;
+}
+
+.app-shell--narrow {
+  width: min(calc(100% - 28px), 760px);
 }
 
 .display-shell {
@@ -137,6 +142,18 @@ button {
     linear-gradient(135deg, #0c879f 0%, #1f6fa6 50%, #27496d 100%);
 }
 
+.hero-card--cashier {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 34%),
+    linear-gradient(135deg, #118ab2 0%, #1a7f8f 45%, #215d8c 100%);
+}
+
+.hero-card--handover {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 34%),
+    linear-gradient(135deg, #17a673 0%, #269f84 46%, #1b7fa4 100%);
+}
+
 .hero-content {
   position: relative;
   z-index: 1;
@@ -166,8 +183,10 @@ button {
 .toolbar-actions,
 .display-meta,
 .button-column,
-.info-grid,
-.toolbar {
+.toolbar,
+.ops-grid,
+.metric-row,
+.receipt-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -206,7 +225,8 @@ button {
 
 .pill,
 .status-pill,
-.display-chip {
+.display-chip,
+.mini-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -225,6 +245,11 @@ button {
 
 .pill[data-ready="false"] {
   background: rgba(255, 255, 255, 0.28);
+}
+
+.mini-chip {
+  background: rgba(16, 37, 66, 0.06);
+  color: var(--ink-soft);
 }
 
 .page-grid {
@@ -255,7 +280,8 @@ button {
   padding: 20px 18px;
 }
 
-.centered-card {
+.centered-card,
+.status-hero-card {
   display: grid;
   gap: 12px;
   justify-items: center;
@@ -296,7 +322,7 @@ button {
 .summary-label,
 .field span,
 .info-chip span,
-.receipt-details dt {
+.loading-text {
   color: var(--ink-soft);
 }
 
@@ -307,7 +333,10 @@ button {
   line-height: 1.65;
 }
 
-.product-grid {
+.product-grid,
+.slot-grid,
+.order-list,
+.slot-summary-grid {
   display: grid;
   gap: 14px;
 }
@@ -373,6 +402,7 @@ button {
   align-items: center;
 }
 
+.slot-card,
 .qty-button,
 .primary-button,
 .secondary-button,
@@ -383,6 +413,36 @@ button {
   border: none;
   border-radius: 16px;
   transition: transform 160ms ease, opacity 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.slot-card {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.slot-card.is-selected {
+  border-color: rgba(57, 198, 221, 0.62);
+  box-shadow: 0 16px 28px rgba(57, 198, 221, 0.14);
+}
+
+.slot-card.is-disabled {
+  opacity: 0.6;
+}
+
+.slot-title {
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+}
+
+.slot-meta,
+.slot-note {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
 }
 
 .qty-button {
@@ -401,7 +461,8 @@ button {
 .primary-button,
 .secondary-button,
 .ghost-button,
-.danger-button {
+.danger-button,
+.status-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -430,12 +491,18 @@ button {
   color: var(--coral-deep);
 }
 
+.status-button {
+  background: rgba(16, 37, 66, 0.06);
+  color: var(--ink);
+}
+
 .primary-button:hover,
 .secondary-button:hover,
 .ghost-button:hover,
 .danger-button:hover,
 .qty-button:hover,
-.status-button:hover {
+.status-button:hover,
+.slot-card:hover {
   transform: translateY(-1px);
 }
 
@@ -444,7 +511,8 @@ button {
 .ghost-button:disabled,
 .danger-button:disabled,
 .qty-button:disabled,
-.status-button:disabled {
+.status-button:disabled,
+.slot-card:disabled {
   opacity: 0.56;
   cursor: not-allowed;
   transform: none;
@@ -456,18 +524,29 @@ button {
 }
 
 .field input,
-.search-field input {
+.search-field input,
+.textarea-field {
   width: 100%;
-  min-height: 50px;
   border: 1px solid var(--line);
   border-radius: 16px;
-  padding: 0 16px;
+  padding: 14px 16px;
   background: rgba(255, 255, 255, 0.82);
   color: var(--ink);
 }
 
+.field input,
+.search-field input {
+  min-height: 50px;
+}
+
+.textarea-field {
+  min-height: 110px;
+  resize: vertical;
+}
+
 .field input:focus,
-.search-field input:focus {
+.search-field input:focus,
+.textarea-field:focus {
   outline: 3px solid rgba(57, 198, 221, 0.16);
   border-color: rgba(57, 198, 221, 0.68);
 }
@@ -512,7 +591,7 @@ button {
 }
 
 .summary-list,
-.receipt-details {
+.simple-line-list {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -532,6 +611,12 @@ button {
   background: rgba(16, 37, 66, 0.04);
 }
 
+.simple-line-list {
+  display: grid;
+  gap: 6px;
+  color: var(--ink);
+}
+
 .summary-list li.empty-state {
   justify-content: center;
   color: var(--ink-soft);
@@ -542,6 +627,10 @@ button {
   border-radius: 14px;
   line-height: 1.6;
   font-size: 0.95rem;
+}
+
+.message-banner--inline {
+  width: 100%;
 }
 
 .message-banner[data-tone="info"] {
@@ -586,6 +675,7 @@ button {
 }
 
 .receipt-card {
+  display: grid;
   gap: 14px;
 }
 
@@ -605,41 +695,31 @@ button {
   color: var(--coral-deep);
 }
 
-.receipt-details {
-  display: grid;
-  gap: 12px;
-}
-
-.receipt-details div {
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: rgba(16, 37, 66, 0.04);
-}
-
-.receipt-details dd {
-  margin: 8px 0 0;
-  font-weight: 700;
-}
-
-.receipt-link {
-  word-break: break-all;
-}
-
-.info-grid {
+.receipt-grid,
+.info-panel-grid,
+.stats-grid {
   display: grid;
   gap: 10px;
 }
 
-.info-chip {
+.slot-summary-card,
+.info-chip,
+.stat-card,
+.empty-card {
   padding: 14px 16px;
-  border-radius: 16px;
-  background: rgba(16, 37, 66, 0.04);
+  border-radius: 18px;
+  background: rgba(16, 37, 66, 0.05);
   display: grid;
   gap: 6px;
 }
 
-.info-chip strong {
+.info-chip strong,
+.slot-summary-card strong {
   font-size: 1rem;
+}
+
+.info-chip--accent {
+  background: linear-gradient(135deg, rgba(57, 198, 221, 0.12), rgba(124, 233, 198, 0.16));
 }
 
 .login-card {
@@ -657,17 +737,15 @@ button {
 }
 
 .stats-grid {
-  display: grid;
-  gap: 10px;
   margin-top: 14px;
 }
 
-.stat-card {
-  padding: 14px 16px;
-  border-radius: 18px;
-  background: rgba(16, 37, 66, 0.05);
-  display: grid;
-  gap: 4px;
+.stats-grid--compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.stats-grid--wide {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .stat-card strong {
@@ -675,35 +753,40 @@ button {
   font-size: 1.5rem;
 }
 
-.admin-order-list {
+.order-list {
   display: grid;
   gap: 14px;
 }
 
-.admin-order-card {
+.admin-order-card,
+.compact-order-card {
   display: grid;
   gap: 14px;
   padding: 18px;
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(26, 127, 143, 0.12);
   box-shadow: var(--shadow-md);
 }
 
-.admin-order-head {
+.admin-order-head,
+.compact-order-head {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 10px 12px;
+  align-items: center;
 }
 
 .admin-order-head h3,
+.compact-order-head h3,
 .display-number {
   margin: 0;
   font-family: var(--font-display);
 }
 
-.admin-order-head h3 {
+.admin-order-head h3,
+.compact-order-head h3 {
   font-size: 1.4rem;
 }
 
@@ -737,28 +820,26 @@ button {
   gap: 8px;
 }
 
-.status-button {
-  min-height: 42px;
-  padding: 0 14px;
-  background: rgba(16, 37, 66, 0.06);
-  color: var(--ink);
-  font-weight: 700;
-}
-
-.status-button.is-active {
-  background: linear-gradient(135deg, rgba(57, 198, 221, 0.18), rgba(124, 233, 198, 0.22));
-  color: var(--teal);
+.metric-row {
+  justify-content: space-between;
+  align-items: center;
 }
 
 .status-pill {
   color: var(--white);
 }
 
-.status-pill[data-status="受付中"] {
+.status-pill--large {
+  min-height: 42px;
+  padding: 0 18px;
+  font-size: 1rem;
+}
+
+.status-pill[data-status="決済待ち"] {
   background: linear-gradient(135deg, #2bb6cb, #3ed1e6);
 }
 
-.status-pill[data-status="調理中"] {
+.status-pill[data-status="調理待ち"] {
   background: linear-gradient(135deg, #ff9d00, #ffbc42);
 }
 
@@ -766,12 +847,75 @@ button {
   background: linear-gradient(135deg, #1ea672, #35c78d);
 }
 
-.status-pill[data-status="受取済み"] {
+.status-pill[data-status="受取済"] {
   background: linear-gradient(135deg, #425a7c, #657898);
 }
 
 .status-pill[data-status="キャンセル"] {
   background: linear-gradient(135deg, #cf3f5f, #f05a7e);
+}
+
+.status-steps {
+  display: grid;
+  gap: 10px;
+}
+
+.status-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(16, 37, 66, 0.05);
+}
+
+.status-step span {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(16, 37, 66, 0.08);
+  font-weight: 800;
+}
+
+.status-step strong {
+  font-size: 1rem;
+}
+
+.status-step.is-current {
+  background: rgba(57, 198, 221, 0.14);
+}
+
+.status-step.is-done {
+  background: rgba(124, 233, 198, 0.18);
+}
+
+.status-step.is-canceled {
+  background: rgba(244, 80, 102, 0.14);
+}
+
+.wrap-anywhere {
+  word-break: break-all;
+}
+
+.ops-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.ops-grid {
+  align-items: center;
+}
+
+.empty-card {
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.empty-card h3,
+.empty-card p {
+  margin: 0;
 }
 
 .footer-note {
@@ -869,13 +1013,20 @@ button {
     padding: 24px 22px;
   }
 
-  .product-grid {
+  .product-grid,
+  .slot-grid,
+  .slot-summary-grid,
+  .info-panel-grid,
+  .receipt-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .stats-grid,
-  .info-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .stats-grid--compact {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .stats-grid--wide {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -894,36 +1045,15 @@ button {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .stats-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 719px) {
-  .app-shell,
-  .display-shell {
-    width: min(calc(100% - 20px), 100%);
-    padding-top: 14px;
+  .slot-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .hero-card {
-    border-radius: 26px;
+  .slot-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .hero-sticker {
-    display: none;
-  }
-
-  .panel-card,
-  .admin-order-card {
-    border-radius: 22px;
-  }
-
-  .display-board {
-    padding: 18px;
-  }
-
-  .display-order-card {
-    min-height: 140px;
+  .stats-grid--wide {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }

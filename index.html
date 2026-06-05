@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>文化祭注文予約</title>
-  <meta name="description" content="文化祭の模擬店向け注文予約システム">
+  <title>クロッフル注文 | Un Deux Crois</title>
+  <meta name="description" content="文化祭クロッフル販売用のQR注文システム">
   <meta name="theme-color" content="#ff6f61">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
@@ -15,16 +15,16 @@
   <main class="app-shell">
     <section class="hero-card">
       <div class="hero-content">
-        <p class="eyebrow">Cultural Festival Pre-Order</p>
-        <h1 data-store-name>Un Deux Crois</h1>
-        <p class="hero-copy">QRコードからそのまま予約。並ぶ前に注文して、受け取りをもっとスムーズに。</p>
+        <p class="eyebrow">Festival Croffle Order</p>
+        <h1 id="heroTitle">クロッフル受け取り注文</h1>
+        <p id="heroCopy" class="hero-copy">商品を選んで受取時間を予約し、現地でAirペイ決済してください。</p>
         <div class="hero-meta">
-          <span class="pill">スマホ最適化</span>
-          <span class="pill">ホーム画面追加OK</span>
-          <span class="pill" data-api-config-status>Apps Script 接続準備OK</span>
+          <span class="pill" data-store-name>Un Deux Crois</span>
+          <span id="saleWindowPill" class="pill">受取時間を読み込み中</span>
+          <span id="orderStatePill" class="pill">受付状況を確認中</span>
         </div>
       </div>
-      <div class="hero-sticker">Festival Food</div>
+      <div class="hero-sticker">Airペイ対応</div>
     </section>
 
     <section class="page-grid">
@@ -35,9 +35,10 @@
               <p class="section-kicker">STEP 1</p>
               <h2>商品をえらぶ</h2>
             </div>
-            <p class="section-caption">気になるメニューをタップして数量を増やしてください。</p>
+            <p class="section-caption">数量に応じて、入れる時間枠を自動で案内します。</p>
           </div>
           <div id="orderMessage" class="message-banner" hidden></div>
+          <div id="publicNotice" class="message-banner" hidden></div>
           <div id="productGrid" class="product-grid"></div>
         </section>
 
@@ -45,18 +46,31 @@
           <div class="section-heading">
             <div>
               <p class="section-kicker">STEP 2</p>
+              <h2>受取時間をえらぶ</h2>
+            </div>
+            <p class="section-caption">残り個数が足りない枠は自動で次の枠をご案内します。</p>
+          </div>
+          <div id="slotNotice" class="message-banner" hidden></div>
+          <div id="slotGrid" class="slot-grid"></div>
+        </section>
+
+        <section class="panel-card">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">STEP 3</p>
               <h2>注文者情報</h2>
             </div>
+            <p class="section-caption">名前は必須です。決済は当日にレジで行います。</p>
           </div>
           <label class="field">
             <span>名前 <strong class="required-label">必須</strong></span>
-            <input id="customerName" name="name" type="text" maxlength="40" autocomplete="name" placeholder="例：山田 花子" required>
+            <input id="customerName" type="text" maxlength="40" autocomplete="name" placeholder="例：山田 花子" required>
           </label>
           <label class="field">
             <span>学年 <span class="optional-label">任意</span></span>
-            <input id="customerGrade" name="grade" type="text" maxlength="20" autocomplete="organization-title" placeholder="例：2年 / 保護者">
+            <input id="customerGrade" type="text" maxlength="20" autocomplete="organization-title" placeholder="例：2年 / 保護者">
           </label>
-          <button id="submitOrderButton" class="primary-button" type="submit">予約する</button>
+          <button id="submitOrderButton" class="primary-button" type="submit">この内容で注文する</button>
         </section>
       </form>
 
@@ -64,8 +78,8 @@
         <section class="panel-card summary-card">
           <div class="section-heading">
             <div>
-              <p class="section-kicker">LIVE TOTAL</p>
-              <h2>現在の注文</h2>
+              <p class="section-kicker">CONFIRM</p>
+              <h2>注文確認</h2>
             </div>
           </div>
           <div class="summary-total">
@@ -77,43 +91,50 @@
               <span id="orderTotalItems">0個</span>
             </div>
           </div>
+          <div class="slot-summary-card">
+            <span class="summary-label">受取時間</span>
+            <strong id="selectedSlotLabel">まだ選択されていません</strong>
+          </div>
           <ul id="orderSummaryList" class="summary-list"></ul>
+          <p id="paymentNotice" class="small-note">指定時間内にレジでAirペイ決済をお願いします。</p>
         </section>
 
         <section id="receiptPanel" class="panel-card receipt-card" hidden>
           <div class="section-heading">
             <div>
-              <p class="section-kicker">STEP 3</p>
-              <h2>予約完了</h2>
+              <p class="section-kicker">ORDER COMPLETE</p>
+              <h2>注文完了</h2>
             </div>
           </div>
           <div class="receipt-highlight">
             <p class="summary-label">注文番号</p>
-            <p id="receiptOrderNumber" class="receipt-order-number">#101</p>
+            <p id="receiptOrderNumber" class="receipt-order-number">#---</p>
           </div>
-          <dl class="receipt-details">
-            <div>
-              <dt>ステータス</dt>
-              <dd id="receiptStatus">受付中</dd>
+          <div class="receipt-grid">
+            <div class="info-chip">
+              <span>状態</span>
+              <strong id="receiptStatus">決済待ち</strong>
             </div>
-            <div>
-              <dt>編集用URL</dt>
-              <dd>
-                <a id="receiptEditLink" class="receipt-link mono" href="#" target="_blank" rel="noopener noreferrer"></a>
-              </dd>
+            <div class="info-chip">
+              <span>受取時間</span>
+              <strong id="receiptSlotLabel">-</strong>
             </div>
-          </dl>
+          </div>
+          <div class="info-chip">
+            <span>お客様ページ</span>
+            <strong id="receiptCustomerLink" class="mono wrap-anywhere">-</strong>
+          </div>
           <div class="button-row">
-            <button id="copyEditLinkButton" class="secondary-button" type="button">編集URLをコピー</button>
-            <a id="openEditPageButton" class="ghost-button" href="#" target="_blank" rel="noopener noreferrer">編集ページを開く</a>
+            <a id="openCustomerPageButton" class="primary-button" href="./customer.html">待機画面を開く</a>
+            <button id="copyCustomerLinkButton" class="secondary-button" type="button">URLをコピー</button>
           </div>
-          <p class="small-note">受け取りまでこの注文番号を保存してください。</p>
+          <p class="small-note">注文番号は大きく表示されます。スクリーンショット保存をおすすめします。</p>
         </section>
       </aside>
     </section>
 
     <footer class="footer-note">
-      <p><span data-store-name>Un Deux Crois</span> ・ 文化祭オーダーシステム</p>
+      <p><span data-store-name>Un Deux Crois</span> ・ 文化祭クロッフル注文システム</p>
       <p>&copy; <span id="currentYear"></span> School Festival Project</p>
     </footer>
   </main>

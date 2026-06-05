@@ -1,6 +1,6 @@
 {
-  "name": "文化祭注文予約",
-  "short_name": "文化祭予約",
+  "name": "文化祭クロッフル注文",
+  "short_name": "クロッフル注文",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#fff8ef",

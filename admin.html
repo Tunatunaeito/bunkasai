@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>管理画面 | 文化祭注文予約</title>
-  <meta name="description" content="文化祭の模擬店向け管理画面">
+  <title>管理画面 | Un Deux Crois</title>
+  <meta name="description" content="文化祭クロッフル販売の管理画面">
   <meta name="theme-color" content="#1a7f8f">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
@@ -17,33 +17,28 @@
       <div class="hero-content">
         <p class="eyebrow">Admin Dashboard</p>
         <h1>運営管理画面</h1>
-        <p class="hero-copy">検索、一覧確認、ステータス更新をこの画面でまとめて操作できます。</p>
-        <div class="hero-meta">
-          <span class="pill">パスワード保護</span>
-          <span class="pill">リアルタイム更新</span>
-          <span class="pill" data-api-config-status>Apps Script 接続準備OK</span>
-        </div>
+        <p class="hero-copy">注文管理、売上確認、時間枠残数、受付停止と再開をまとめて操作できます。</p>
       </div>
     </section>
 
-    <section id="adminLoginCard" class="panel-card login-card">
+    <section id="opsLoginCard" class="panel-card login-card">
       <div class="section-heading">
         <div>
           <p class="section-kicker">LOGIN</p>
           <h2>管理者ログイン</h2>
         </div>
       </div>
-      <div id="adminLoginMessage" class="message-banner" hidden></div>
-      <form id="adminLoginForm" class="stack-md" novalidate>
+      <div id="opsLoginMessage" class="message-banner" hidden></div>
+      <form id="opsLoginForm" class="stack-md" novalidate>
         <label class="field">
           <span>管理パスワード</span>
-          <input id="adminPassword" type="password" autocomplete="current-password" placeholder="管理者用パスワードを入力" required>
+          <input id="opsPassword" type="password" autocomplete="current-password" placeholder="管理パスワードを入力" required>
         </label>
-        <button id="adminLoginButton" class="primary-button" type="submit">ログインする</button>
+        <button id="opsLoginButton" class="primary-button" type="submit">ログインする</button>
       </form>
     </section>
 
-    <section id="adminDashboard" class="stack-lg" hidden>
+    <section id="opsDashboard" class="stack-lg" hidden>
       <div class="panel-card">
         <div class="toolbar">
           <label class="search-field">
@@ -52,13 +47,56 @@
           </label>
           <div class="toolbar-actions">
             <button id="adminRefreshButton" class="secondary-button" type="button">再読み込み</button>
-            <button id="adminLogoutButton" class="ghost-button" type="button">ログアウト</button>
+            <button id="opsLogoutButton" class="ghost-button" type="button">ログアウト</button>
           </div>
         </div>
-        <div id="adminDashboardMessage" class="message-banner" hidden></div>
-        <div id="adminStats" class="stats-grid"></div>
+        <div id="adminMessage" class="message-banner" hidden></div>
+        <div id="adminStats" class="stats-grid stats-grid--wide"></div>
         <p id="adminUpdatedAt" class="small-note">最終更新: -</p>
       </div>
+
+      <section class="panel-card ops-panel">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">OPERATIONS</p>
+            <h2>当日運営コントロール</h2>
+          </div>
+        </div>
+        <div class="ops-grid">
+          <div class="info-chip info-chip--accent">
+            <span>受付</span>
+            <strong id="acceptingStateLabel">-</strong>
+          </div>
+          <div class="info-chip info-chip--accent">
+            <span>完売設定</span>
+            <strong id="soldOutStateLabel">-</strong>
+          </div>
+          <div class="button-row">
+            <button id="stopOrdersButton" class="danger-button" type="button">受付停止</button>
+            <button id="resumeOrdersButton" class="secondary-button" type="button">受付再開</button>
+            <button id="markSoldOutButton" class="danger-button" type="button">完売にする</button>
+            <button id="clearSoldOutButton" class="secondary-button" type="button">完売解除</button>
+          </div>
+        </div>
+        <label class="field">
+          <span>案内メッセージ</span>
+          <textarea id="announcementInput" class="textarea-field" rows="3" placeholder="注文画面の上部に表示するメッセージ"></textarea>
+        </label>
+        <div class="button-row">
+          <button id="saveAnnouncementButton" class="primary-button" type="button">メッセージ保存</button>
+          <a id="sheetOpenLink" class="ghost-button" href="#" target="_blank" rel="noopener noreferrer">Google Sheets設定を開く</a>
+        </div>
+      </section>
+
+      <section class="panel-card">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">TIME SLOTS</p>
+            <h2>時間枠別集計と残数</h2>
+          </div>
+        </div>
+        <div id="slotStatsList" class="slot-summary-grid"></div>
+      </section>
 
       <section class="stack-md">
         <div class="section-heading section-heading--inline">
@@ -67,7 +105,17 @@
             <h2>注文一覧</h2>
           </div>
         </div>
-        <div id="adminOrderList" class="admin-order-list"></div>
+        <div id="adminOrderList" class="order-list"></div>
+      </section>
+
+      <section class="stack-md">
+        <div class="section-heading section-heading--inline">
+          <div>
+            <p class="section-kicker">CANCELED</p>
+            <h2>キャンセル一覧</h2>
+          </div>
+        </div>
+        <div id="adminCancelList" class="order-list"></div>
       </section>
     </section>
   </main>

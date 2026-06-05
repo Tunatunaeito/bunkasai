@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>受け渡し画面 | Un Deux Crois</title>
+  <meta name="description" content="文化祭クロッフル注文の受け渡し担当画面">
+  <meta name="theme-color" content="#1a7f8f">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./script.js" defer></script>
+</head>
+<body data-page="handover">
+  <main class="app-shell">
+    <section class="hero-card hero-card--handover">
+      <div class="hero-content">
+        <p class="eyebrow">Handover</p>
+        <h1>受け渡し画面</h1>
+        <p class="hero-copy">調理待ちを「完成」に、完成済みを「受取済」に変更します。</p>
+      </div>
+    </section>
+
+    <section id="opsLoginCard" class="panel-card login-card">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">LOGIN</p>
+          <h2>スタッフログイン</h2>
+        </div>
+      </div>
+      <div id="opsLoginMessage" class="message-banner" hidden></div>
+      <form id="opsLoginForm" class="stack-md" novalidate>
+        <label class="field">
+          <span>管理パスワード</span>
+          <input id="opsPassword" type="password" autocomplete="current-password" placeholder="パスワードを入力" required>
+        </label>
+        <button id="opsLoginButton" class="primary-button" type="submit">ログインする</button>
+      </form>
+    </section>
+
+    <section id="opsDashboard" class="stack-lg" hidden>
+      <div class="panel-card">
+        <div class="toolbar">
+          <label class="search-field">
+            <span class="sr-only">注文番号検索</span>
+            <input id="handoverSearchInput" type="search" placeholder="注文番号で検索">
+          </label>
+          <div class="toolbar-actions">
+            <button id="handoverRefreshButton" class="secondary-button" type="button">再読み込み</button>
+            <button id="opsLogoutButton" class="ghost-button" type="button">ログアウト</button>
+          </div>
+        </div>
+        <div id="handoverMessage" class="message-banner" hidden></div>
+        <div id="handoverStats" class="stats-grid stats-grid--compact"></div>
+        <p id="handoverUpdatedAt" class="small-note">最終更新: -</p>
+      </div>
+
+      <section class="stack-md">
+        <div class="section-heading section-heading--inline">
+          <div>
+            <p class="section-kicker">COOKING WAIT</p>
+            <h2>完成待ち</h2>
+          </div>
+        </div>
+        <div id="handoverCookingList" class="order-list"></div>
+      </section>
+
+      <section class="stack-md">
+        <div class="section-heading section-heading--inline">
+          <div>
+            <p class="section-kicker">READY</p>
+            <h2>受け渡し待ち</h2>
+          </div>
+        </div>
+        <div id="handoverReadyList" class="order-list"></div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>
