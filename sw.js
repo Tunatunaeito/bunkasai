@@ -1,9 +1,10 @@
-const CACHE_NAME = "festival-croffle-pwa-v4";
+const CACHE_NAME = "festival-croffle-pwa-v5";
 const CORE_ASSETS = [
   "./",
   "./index.html",
   "./customer.html",
   "./cashier.html",
+  "./kitchen.html",
   "./handover.html",
   "./admin.html",
   "./display.html",
@@ -16,7 +17,11 @@ const CORE_ASSETS = [
   "./assets/apple-touch-icon.png",
   "./assets/product-croffle-sugar.svg",
   "./assets/product-croffle-choco.svg",
-  "./assets/product-croffle-berry.svg"
+  "./assets/product-croffle-berry.svg",
+  "./assets/product-croffle-set.svg",
+  "./assets/product-kurungi.svg",
+  "./assets/product-scc.svg",
+  "./assets/product-variety.svg"
 ];
 
 self.addEventListener("install", (event) => {
